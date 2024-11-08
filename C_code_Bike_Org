@@ -1,0 +1,779 @@
+//
+//  AlemuYabsraIteration02.c
+//
+//
+//
+//  Created by Yabsra Alemu on 10/30/22.
+//
+// Explination: This code should be able to allow the user to make organzations until they are satisfied with the amount of organazations entered.
+// once they end the "make an organzation mode", there it will ask you to select from the choices of orgnazations listed. Once you have selecet the
+// Organazation you can either enter a name or no name to bike the race. It will ask you if you would like a jersey if yes then you can get one if
+// no then it will skip to the payment once you are at the payment you will be asked to enter a credit card number that both has characters and integers.
+// once that is done you can either print a recipt or skip it. then it will thank you for your purchase and ask for someone else to sign up. Once you
+// think that you have reached the end of signees, then you can quit the prgram using quit code and the admin setup code. that will print out the earnings that you have made in the shop. Once it has done that it will store it in a file then print it out from the file at the exact same spot as it was entered.
+
+// This is a better version of iteration 1 because it has filled the requirments. Although there are some issues to the code this is a big improvement
+#include <errno.h>
+#include <limits.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <ctype.h>
+#define LENGTHS 80
+#define SIZE 4
+#define YESORNO 2
+
+const char *SELECTIONCHOICE[YESORNO] = {"(y)es","(n)o"};
+const char *GLOBALARRAY[SIZE] = {"(s)mall","(m)edium","(l)arge","(x)tra-large"};
+const int MAXDISTANCE = 200;
+const int MAXCOST = 250;
+const int MAXJERSEY = 150;
+const int MAXPERCENT = 30;
+const int MINDISTNACE = 1;
+const int MINCOST = 1;
+const int MINJERSEY = 1;
+const int MINPERCENT = 5;
+const char PASSWORD[7] = "B!k34u";
+const char QUITADMIN[LENGTHS] = "quit";
+const double CHANGEPERCENT = 0.01;
+const char YES[LENGTHS] = "yes";
+const char NO[LENGTHS] = "no";
+//-----------------------------struct----------------------------//
+struct OrganazationInformation{
+    
+    char organizationName[LENGTHS];
+    char firstNameAndLastName[LENGTHS];
+    char Decision[LENGTHS];
+    double raceDistance;
+    double raceCost;
+    double jerseyCost;
+    double percentage;
+    int shirtsSold;
+    char organazationPick[LENGTHS];
+    
+    int peopleWhoRegistered;
+    double totalCost;
+    double donation;
+    double sales;
+    double totalDonations;
+    struct OrganazationInformation *nextNodePtr;
+
+};
+
+
+
+//these can be used anywhere in the program and they stay
+//constant meaning they are not changed unless someone goes in and changes the values.
+
+void fgetsRemoveNewLine(char *buff);
+//fgets remove new line removes the '\n' in the character array
+
+void adminSet(const char quitAdmin[LENGTHS], struct OrganazationInformation *organazation);
+//this function focuses on the input of the name distance and the cost for the admin
+
+bool getValidationDouble(const char *valid, double *validDoublePtr, int min, int max);
+//this will validate to make sure there is a specific input
+//of the numbers between max and min and return true or false
+
+char getValidChar(const char *globalArray[SIZE], char input[YESORNO]);
+//this will go through the character that is being input
+//in the user and it has to be either s, m, l, or x
+
+void displayData(struct OrganazationInformation *headPtr, struct OrganazationInformation *organazation);
+//this will only print in the function of them name cost and distance
+
+
+bool adminSetUpLogin(const char *blink);
+
+void userInput(struct OrganazationInformation *headNodePtr, const char *selectionChoice[YESORNO], struct OrganazationInformation *organazation, char firstNameLastName[LENGTHS], const char quitAdmin[LENGTHS], const char *blink);
+
+bool cardNumberInputFunction(char *cardNumberInput);
+
+void insertNode(struct OrganazationInformation** headPtr, struct OrganazationInformation *organazation);
+
+void printOutList(struct OrganazationInformation *headPtr);
+
+bool addMoreOrganazations(const char YES[LENGTHS], const char NO[LENGTHS]);
+
+struct OrganazationInformation chooseOrganazation(struct OrganazationInformation **headPtr,struct OrganazationInformation organazation, char organazationPick[LENGTHS]);
+
+void storeDateInFile(struct OrganazationInformation* headPtr);
+
+void readDateInFile(struct OrganazationInformation* headPtr);
+
+int main(void){
+    
+   
+    
+    
+   
+    
+    struct OrganazationInformation organazation;
+    
+    struct OrganazationInformation *headNodePtr = NULL;
+    
+    adminSetUpLogin(PASSWORD);
+    //this will mainly focus on trying to allow the user to edit all of the organzations
+    
+    
+    //these are variables I will use within the main function
+    
+    do{
+    adminSet(QUITADMIN, &organazation);
+    
+        insertNode(&headNodePtr, &organazation);
+    //the adminSet function sending the adress fo name distance and cost
+     
+        printOutList(headNodePtr);
+
+        puts("Would you like to add more organizations? [yes] or [no] ");
+    
+            
+        }while(addMoreOrganazations(YES, NO) == true);
+            
+        //loop until they say either yes or no
+        
+        printOutList(headNodePtr);
+        //print out the entered size and get validchar for the size
+   
+        userInput(headNodePtr, SELECTIONCHOICE, &organazation, organazation.firstNameAndLastName, QUITADMIN, PASSWORD);
+            
+        storeDateInFile(headNodePtr);
+        
+        readDateInFile(headNodePtr);
+        
+    return 0;
+    
+}
+void storeDateInFile(struct OrganazationInformation* headPtr){
+    
+    FILE *summary;
+    
+    struct OrganazationInformation* current = headPtr;
+    
+    summary = fopen("summaryStore.txt", "w");
+    
+    //
+       
+        while(current != NULL){
+            
+            fprintf(summary, "\n %s : %.2lf %.2lf %d %.2lf %.2lf\n", current->organizationName, current->totalCost, current->donation, current->shirtsSold, current->sales, current->totalDonations);
+            
+            current = current->nextNodePtr;
+            
+        }
+   
+   //
+   
+    fclose(summary);
+    
+}
+void readDateInFile(struct OrganazationInformation* headPtr){
+    
+    FILE *summary;
+   
+    struct OrganazationInformation *current = headPtr;
+    
+    if((summary = fopen("summaryStore.txt", "r")) == NULL){
+        
+        puts("ERROR... file could not open");
+        
+    }
+    
+    else{
+       
+        while(!feof(summary)){
+            
+            printf("%s : %.2lf %.2lf %d %.2lf %.2lf\n", current->organizationName, current->totalCost, current->donation, current->shirtsSold, current->sales, current->totalDonations);
+            
+            fscanf(summary, "%s : %lf %lf %d %lf %lf\n", current->organizationName, &current->totalCost, &current->donation, &current->shirtsSold, &current->sales, &current->totalDonations);
+            
+            current = current->nextNodePtr;
+            
+        }
+        
+        fclose(summary);
+   
+    }
+}
+
+bool addMoreOrganazations(const char YES[LENGTHS], const char NO[LENGTHS]){
+    //This function is focused only on the decisions that the user enters when
+    //asked "if they would like to enter more organazations" I chose to have them enter
+    //the full yes or no because I believe that it was the most efficient and accesiable way to do it
+    //at first, I know that I have a validchar function but I chose to do this because it allows them to
+    //actually enter no if they would like to stop or yes if they will like to continue.
+    
+    char Decision[LENGTHS];
+    
+    do{
+        
+        fgets(Decision, LENGTHS, stdin);
+        fgetsRemoveNewLine(Decision);
+        
+    }while(strcmp(Decision, YES) != 0 && strcmp(Decision, NO) != 0);
+    
+    if(strcmp(Decision, YES) == 0){
+       
+        return true;
+        
+    }
+    
+    else {
+        
+        return false;
+        
+    }
+   //end of this function its a bool because there is a decision to "continue or not" because of the while loop in adminset
+}
+void printOutList(struct OrganazationInformation *headPtr){
+    
+    //this will print out the linked list of the organazation and
+    if(headPtr != NULL){
+        
+        struct OrganazationInformation *current = headPtr;
+        
+        puts("Choose an Organazation: Distance Race Cost Jersey Cost");
+        
+        while(current != NULL){
+            
+            printf("\nOrganazation %s : Distance: %.2lf Cost: %.2lf Jersey: %.2lf\n", current->organizationName, current->raceDistance, current->raceCost, current->jerseyCost);
+            
+            current = current->nextNodePtr;
+            
+        }
+   
+    }
+    else{
+        
+        puts("EMPTY");
+        
+    }
+        
+    
+}
+void insertNode(struct OrganazationInformation** headPtr, struct OrganazationInformation *organazation)
+{
+    //this is where I store all of the organzation that are linked together
+    
+    struct OrganazationInformation* newNodePtr = malloc(sizeof(struct OrganazationInformation));
+    //get the size of then Node that is coming in
+
+    if (newNodePtr != NULL)
+    {
+        //if its not null the newNode will have organzation inside of it
+        *newNodePtr = *organazation;
+        
+      
+        //
+        newNodePtr->nextNodePtr = NULL;
+
+        //
+        struct OrganazationInformation* previousPtr = NULL;
+        //
+        struct OrganazationInformation* currentPtr = *headPtr;
+
+            while(currentPtr != NULL && strcmp(currentPtr->organizationName, newNodePtr->organizationName) > 0){
+            previousPtr = currentPtr;
+            currentPtr = currentPtr->nextNodePtr;
+            
+        }
+        if (previousPtr == NULL)
+        {
+            //
+            *headPtr = newNodePtr;
+        }
+        //
+        else
+        {
+            //
+            previousPtr->nextNodePtr = newNodePtr;
+        }
+
+        //
+        newNodePtr->nextNodePtr = currentPtr;
+    }
+    //
+    else
+    {
+        printf("%s", "No memory to create node for");
+    }
+} //
+
+
+bool cardNumberInputFunction(char *cardNumberInput){
+//this is a simple program to validate if the person entered a card
+// with characters and integers and if not it will ask the user again
+    for(int i = 0; i < 3; i++){
+        
+        if(!isalpha(cardNumberInput[i])){
+            
+            return false;
+            //this will check to see if the first 4 or are characters
+        }
+    }
+    for(int i = 4; i < 9; i++){
+        
+        if(!isdigit(cardNumberInput[i])){
+            
+            return false;
+            //this will chec the last numbers 8 if they have integers
+        }
+        
+    }
+    
+    return true;
+   
+}
+struct OrganazationInformation chooseOrganazation(struct OrganazationInformation **headPtr,struct OrganazationInformation organazation, char organazationPick[LENGTHS]){
+    
+    bool yesInside = false;
+    
+    struct OrganazationInformation* previousPtr = NULL;
+        
+    struct OrganazationInformation* currentPtr = *headPtr;
+    //I need to intialize the current ptr to head because I do not want the values to be mixed and match once I move the head
+    
+        if (*headPtr != NULL)
+        {
+            
+            if (strcmp((*headPtr)->organizationName,organazationPick) == 0)
+            {
+                //this will see id the oganzation matches the input
+                return *currentPtr;
+                //returns the organzation that does
+                
+            }
+            
+            else
+            {
+                // this focuses on if the organzations does not match the first node
+                while (currentPtr != NULL && strcmp((currentPtr)->organizationName, organazationPick) != 0){
+                    {
+                        //it will iterate throug until
+                        previousPtr = currentPtr;
+                        currentPtr = currentPtr->nextNodePtr;
+                        
+                    }
+                    
+                    //
+                    if (currentPtr != NULL)
+                    {
+                        //when current is not equal to NULL it will return the pointer
+                        return *currentPtr;
+                        //this will return the Ptr that was found when it did not equal the head ptr
+                        
+                    }
+                    //
+                    else
+                    {
+                        
+                        puts("Node to delete not found!");
+                        
+                    }
+                    
+                }
+                
+            }
+        }
+        else {
+            
+            puts("There aren't any nodes in the list!");
+            
+        }
+        
+        //I had trouble with this one because if someone entered something different then it will
+
+    
+    return *currentPtr;
+   
+}
+
+void userInput(struct OrganazationInformation *headNodePtr, const char *selectionChoice[YESORNO], struct OrganazationInformation *organazation, char firstNameLastName[LENGTHS], const char quitAdmin[LENGTHS], const char *blink){
+    //This foucses on the input of the users organzation, name, jersy yes or no, card, recipt yes or no, and loop again while
+    //saving all of the values so it can have the summary of how many
+    bool userDoesntEnterInputQuit = false;
+    char cardNumberInput[LENGTHS];
+    int peopleWhoRegistered = 0;
+    bool notEnteredCorrectly = true;
+    char input[LENGTHS];
+    struct OrganazationInformation *current = headNodePtr;
+    while(userDoesntEnterInputQuit == false){
+            
+        
+            puts("Enter a Organanzation");
+            fgets(organazation->organazationPick, LENGTHS, stdin);
+            fgetsRemoveNewLine(organazation->organazationPick);
+            
+           
+       
+            if(strcmp(organazation->organazationPick, quitAdmin) == 0){
+               
+                if(adminSetUpLogin(blink)== true){
+                   
+                    displayData(headNodePtr, organazation);
+                    //print recipt after this
+                    notEnteredCorrectly = false;
+                    
+                    userDoesntEnterInputQuit = true;
+                    
+                }
+                
+            }//userDoesntEnterInputQuit = adminSetUpLogin(firstNameLastName);
+          
+        else{
+           
+            *organazation = chooseOrganazation(&headNodePtr, *organazation, organazation->organazationPick);
+            puts("Enter First Name and Last Name:");
+            fgets(organazation->firstNameAndLastName, LENGTHS, stdin);
+            fgetsRemoveNewLine(organazation->firstNameAndLastName);
+            printf("Do you want to purchase a jersey for  %.2lf ?" , organazation->jerseyCost);
+            fgets(input, LENGTHS, stdin);
+            fgetsRemoveNewLine(input);
+            char choice = getValidChar(selectionChoice, input);
+            
+            current->peopleWhoRegistered++;
+            //
+            
+           //
+                
+                if(choice == 'y'){
+                    //this will check to see if the char being sent is in the array
+                    notEnteredCorrectly = true;
+                    
+                    current->shirtsSold++;
+                    
+                    puts("\n\nSelect your shirt size by entering the character in parenthesis:\n (s)mall (m)edium (l)arge (x)tra-large.\n");
+                    fgets(input, LENGTHS, stdin);
+                    choice = getValidChar(selectionChoice, input);
+                    fgetsRemoveNewLine(input);
+                    
+                    getValidChar(GLOBALARRAY, input);
+                    current->totalCost = current->raceCost + current->jerseyCost;
+                    current->donation = ((current->percentage) * CHANGEPERCENT) * current->totalCost;
+                   
+                    organazation->totalCost = organazation->jerseyCost + organazation->raceCost;
+                    organazation->donation = ((organazation->percentage) * CHANGEPERCENT) * organazation->totalCost;
+                    
+                    current->sales = current->donation + current->totalCost; //totalCost;
+                    current->totalDonations += current->donation;
+                    do{
+                        
+                        puts("Enter Card:");
+                        
+                        fgets(cardNumberInput, LENGTHS, stdin);
+                        
+                        fgetsRemoveNewLine(cardNumberInput);
+                        
+                    }while(cardNumberInputFunction(cardNumberInput) == false);
+                    
+                    puts("Would you like a recipt?");
+                    fgets(input, LENGTHS, stdin);
+                    fgetsRemoveNewLine(input);
+                    choice = getValidChar(selectionChoice, input);
+                   
+                   
+                    if(choice == 'y'){
+                        printf("Organazation: %s Race:  $ %.2lf\n Jersey: $ %.2lf\n \n\n total Cost: $ %.2lf\n donation amount: $ %.2lf\n" ,organazation->organizationName , organazation->raceCost, organazation->jerseyCost, organazation->totalCost, organazation->donation);
+                        //this will print out the recipt that is saved in the struct
+                       //when the user enters y
+                        
+                    }
+                   else{
+                        //I really strrugled in this part because I was completely overwhelmed by the first part of validation that I fogot how to do validation for different cases
+                        
+                       printf("\n\nThank you [%s] for your purchase. [%.2lf] of the ticket sales will go to charity\n", organazation->firstNameAndLastName, organazation->donation);
+                        
+                    }
+                }
+                else if(choice == 'n'){
+                    //this will check to see if the char being sent is in the array
+                    notEnteredCorrectly = true;
+                    
+                    current->totalCost += current->raceCost;
+                    current->donation = ((current->percentage) * CHANGEPERCENT) * current->totalCost;
+                    
+                    organazation->totalCost += organazation->raceCost;
+                    organazation->donation = ((organazation->percentage) * CHANGEPERCENT) * organazation->totalCost;
+                    
+                    current->sales = current->donation + current->totalCost; //totalCost;
+                    current->totalDonations += current->donation;
+                    printf("Race:  $ %.2lf\n Jersey: $ %.2lf\n \n\n total Cost: $ %.2lf\n donation amount: $ %.2lf\n" , organazation->raceCost, organazation->jerseyCost, organazation->totalCost, organazation->donation);
+                   
+                    do{
+                        puts("Enter Card:");
+                        
+                        fgets(cardNumberInput, LENGTHS, stdin);
+                        
+                        fgetsRemoveNewLine(cardNumberInput);
+                    }
+                    while(cardNumberInputFunction(cardNumberInput) == false);
+                    
+                              
+                    
+                }
+                else{
+                    
+                        
+                    }
+          
+   
+        }
+        
+      
+    }
+    
+    
+}
+bool adminSetUpLogin(const char *blink){
+    //this is where all of the logins go so that the admin can check to see if their able to edit
+    char inputPassword[LENGTHS];
+    int attempts = 0;
+    
+    puts("Enter the password:");
+    fgets(inputPassword, LENGTHS, stdin);
+    fgetsRemoveNewLine(inputPassword);
+    while(attempts != 3){
+        //
+        if((strcmp(inputPassword, blink)) == 0){
+            
+            return true;
+            
+        }
+        
+        else{
+           
+            attempts++;
+            //attempts add on to exit the while loop if there was to many tries on the password
+            puts("INVALID: Enter the password:");
+            fgets(inputPassword, LENGTHS, stdin);
+            fgetsRemoveNewLine(inputPassword);
+       
+        }
+        
+    }
+    
+    return false;
+    
+}
+
+void fgetsRemoveNewLine(char* buff){
+    
+    char newLine = '\n';
+    
+    char nullChar = '\0';
+    //just the characters i will use to change
+    size_t length = strlen(buff);
+    //the string length is set as length of size_t
+    if(buff[length - 1] == newLine){
+        
+        buff[length - 1] = nullChar;
+        //this will go in the length and change the '\n' to a '\0'
+    }
+    
+}
+
+
+void adminSet(const char quitAdmin[LENGTHS], struct OrganazationInformation *organazation){
+    
+    
+    char cost[LENGTHS];
+    char distance[LENGTHS];
+    char jersey[LENGTHS];
+    char donation[LENGTHS];
+  
+    puts("Enter an Organization Name:");
+    
+    fgets(organazation->organizationName, LENGTHS, stdin);
+    
+    fgetsRemoveNewLine(organazation->organizationName);
+    //removing the new line character that is entered
+    
+    
+    do{
+        puts("Enter Distance For Race:");
+        fgets(distance, LENGTHS, stdin);
+        //enter the distance of the race in the fgets function
+        
+        fgetsRemoveNewLine(distance);
+        //removing the new line character that is entered
+    }while(!getValidationDouble(distance, &organazation->raceDistance, MINDISTNACE, MAXDISTANCE));
+    
+    
+    //this will return either a true or false and ten it will let us know whether it is valid or not
+    
+    
+    
+    
+    do{
+        
+        puts("Enter Cost of Race:\n");
+        
+        fgets(cost, LENGTHS, stdin);
+        
+        fgetsRemoveNewLine(cost);
+        //removing the new line character that is entered
+    }while(!getValidationDouble(cost,&organazation->raceCost, MINCOST, MAXCOST));
+    //this will go to the validDouble function to see if the valid double does not equal then it will re iterate
+    
+    do{
+        puts("Enter Price For Jersey:");
+        fgets(jersey, LENGTHS, stdin);
+        //enter the distance of the race in the fgets function
+        
+        fgetsRemoveNewLine(jersey);
+        //removing the new line character that is entered
+    }while(!getValidationDouble(jersey, &organazation->jerseyCost, MINJERSEY, MAXJERSEY));
+    //this will return either a true or false and ten it will let us know whether it is valid or not
+    
+    
+    
+    
+    do{
+        //dispaly the data for cost distance organization name cost and distance
+        printf("Enter percentage of the bike race sales that will be donated to [%s] \n", organazation->organizationName);
+        fgets(donation, LENGTHS, stdin);
+        //enter the distance of the race in the fgets function
+        
+        fgetsRemoveNewLine(donation);
+        //removing the new line character that is entered
+    }
+    while(!getValidationDouble(donation,&organazation->percentage , MINPERCENT, MAXPERCENT));
+    //this will return either a true or false and ten it will let us know whether it is valid or not
+
+}
+
+void displayData(struct OrganazationInformation *headPtr, struct OrganazationInformation *organazation){
+    
+   
+    if(headPtr != NULL){
+        
+        struct OrganazationInformation *current = headPtr;
+        
+        puts("Choose an Organazation: Distance Race Cost Jersey Cost");
+        
+        while(current != NULL){
+            printf("%s", "    total cost     donation      shirts sold     sales     total donations");
+            printf("\n %s :    %.2lf         %.2lf               %d        %.2lf        %.2lf\n", current->organizationName, current->totalCost, current->donation, current->shirtsSold, current->sales, current->totalDonations);
+            
+            current = current->nextNodePtr;
+            
+        }
+   
+    }
+    else{
+        
+        puts("EMPTY");
+        
+    }
+    //this will just convert the characters into a double and print it out using the strod library it will convert the adress of end and the cost with the distance
+    
+}
+
+bool getValidationDouble(const char *valid, double *validDoublePtr, int min, int max){
+    
+    char* end;
+    
+    errno = 0;
+    
+    
+    
+    double doubleCheck = strtod(valid, &end);
+    //this will double check the strod and change it into a double
+    
+    if(end == valid){
+        printf("%s","");
+        return false;
+        //this will return a false if the end is being entered
+    }
+    
+    else if('\0' != *end){
+        
+        return false;
+        //if the pointer does not have an null charater
+    }
+    
+    else if((LONG_MIN == doubleCheck || LONG_MAX == doubleCheck) && ERANGE == errno){
+        
+        return false;
+        //if its not max and min for errno and erange then it will return a false
+    }
+    
+    else if (doubleCheck > max) {
+        
+        return false;
+        //return if its more than the max
+    }
+    
+    else if (doubleCheck < min) {
+        
+        return false;
+        //return if its less than min false
+    }
+    
+    else {
+        
+        *validDoublePtr = (double)doubleCheck;
+        //let valid double equal double check so it can store
+        return true;
+        //return true if it passes all of the if statements
+    }
+    
+    return false;
+    
+}
+
+
+char getValidChar(const char *globalArray[SIZE],  char input[LENGTHS]){
+    
+    bool validInput = false;
+    
+  // puts("\n\nSelect your shirt size by entering the character in parenthesis:\n (s)mall (m)edium (l)arge (x)tra-large.\n");
+    
+    char validChar;
+    
+  
+    //this will get the char thay is being sent to the character
+    validChar = tolower(input[0]);
+    //this will lower the character when it is enter as a capital
+        for(size_t i = 0; i < SIZE; i++){
+            
+            if(validChar == globalArray[i][1]){
+               
+                //this will check to see if the char being sent is in the array
+                return validChar;
+                //return if it is a correct valid character
+                validInput = true;
+                //this will set the valid input to true bool
+            }
+            
+        }
+   
+    while(validInput == false){
+        //when its not a valid input it will come here
+        puts("\n\nINVALID ENTRY:");
+        fgets(input, LENGTHS, stdin);
+        fgetsRemoveNewLine(input);
+       //thos is when you enter a get char variable then it will check if its valid
+        for(size_t i = 0; i < SIZE; i++){
+            
+            validChar = input[0];
+            
+            if(validChar == globalArray[i][1]){
+                        
+                        validInput = true;
+                        //check if its a valid input and set it true
+                        return validChar;
+                        //return the valid char to the main
+            }
+            
+        }
+        
+    }
+    
+    return '\0';
+    //just a null if nothing is working
+}
+
+ 
